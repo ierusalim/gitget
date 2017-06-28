@@ -1,0 +1,13 @@
+{
+    "name": "ierusalim/gitget",
+    "description": "Description of project gitget.",
+    "authors": [
+        {
+            "name": "Alexander Jer",
+            "email": "alex@ierusalim.com"
+        }
+    ],
+    "require": {
+        "ierusalim/github-repo-walk": "dev-master"
+    }
+}
