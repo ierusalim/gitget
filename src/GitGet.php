@@ -6,6 +6,12 @@ use ierusalim\GitRepoWalk\GitRepoWalk;
 class GitGet extends GitRepoWalk {
     
     /**
+     * Mask-parameters for function fnMaskFilter
+     * @var array
+     */
+    private $mask_arr;
+    
+    /**
      * Parsing github urls for recognize git_user, git_repo, etc.
      * 
      * @param string $url
@@ -205,6 +211,13 @@ class GitGet extends GitRepoWalk {
         return true;
     }
     
+    /**
+     * Counting repository statistic - files_cnt, total_size, etc.
+     * 
+     * @param string $git_user_and_repo
+     * @param string|null $git_branch
+     * @return array
+     */
     public function getRepoFilesStat($git_user_and_repo, $git_branch = NULL) {
         $repo_files = $this->getRepoFilesList($git_user_and_repo, $git_branch);
         $files_cnt = 0;
@@ -230,5 +243,119 @@ class GitGet extends GitRepoWalk {
             }
         }
         return $inter_obj;
+    }
+    
+    /**
+     * Path for save validator
+     * 
+     * valid path must beginned by . or / , or wrp:// or d:\
+     * Examples:
+     * vendor/ierusalim/ - invalid path, ./vendor/ierusalim - valid
+     * . - vaid path, default dir
+     * ./vendor
+     * D:\blablabla
+     * /var/dir/
+     *
+     * @param string $path
+     * @return boolean
+     */
+    public function validateLocalDir($path) {
+       do {
+            $fc = substr($path,0,1);
+            if($fc === '.' || $fc === '/') {
+                $next_path = substr($path,1);
+                break;
+            }
+            
+            //check wrappers
+            //potencial writable & mkdir wrappers is:
+            // file, ftp, ftps, phar, ssh2.sftp
+            $i=strpos($path,'://'); //
+            if($i !== false && $i<7) {
+                $next_path = substr($path, $i+2);
+                $wrapper = strtolower(substr($path,0,$i));
+                if(in_array($wrapper,[
+                    'file',
+                    'ftp',
+                    'ftps',
+                    'phar',
+                    'ssh2.sftp'
+                ])) {
+                    //if wrapper supported
+                    switch($wrapper) {
+                    case 'ftp':
+                    case 'ftps':
+                    case 'ssh2.sftp':
+                        $i = strpos($next_path,'/');
+                        if($i === false) return false;
+                        $auth_and_host = substr($next_path,0,$i);
+                        //skip checking auth and host
+                        $next_path = substr($next_path,$i);
+                        break;
+                    case 'file':
+                        $next_path = substr($path,$i+2);
+                    }
+                    break;
+                }
+                return false;
+            }
+
+            //Check variants X:/ , X:\ (for Windows only)
+            //windows checking
+            if(DIRECTORY_SEPARATOR === '\\') {
+                $i=strpos($path,':\\'); //D:\ for example
+                if($i === false) $i=strpos($path,':/');
+                if($i === 1) {
+                    $next_path = substr($path,3);
+                    $drive_ord = ord(strtoupper(substr($path,0,1)));
+                    if($drive_ord>64 && $drive_ord<91) break;
+                }
+            }
+            return false;
+        } while(0);
+       
+        //check next_path, must have
+
+        //disabled chars in windows path
+        $dis_ch = '*?{|}\\:"<>&'; //chars disabled in path % & 
+        if(DIRECTORY_SEPARATOR === '/') {
+            //disabled chars for non-windows path
+            $dis_ch.= " %#\$!`=@'";
+        }
+        
+        $next_path = strtr($next_path,'\\','/');
+        foreach(explode('/', $next_path) as $part) {
+            for($i=0; $i<strlen($part); $i++) {
+                if(strpos($dis_ch, substr($part, $i, 1)) !== false) return false;
+            }
+        }
+        //Passed all validations
+        return true;
+    }
+    
+    public function setMaskFilter($mask) {
+        $mask_pair = explode('*',strtolower($mask));
+        //mask must have one char *
+        if(count($mask_pair) !=2 ) return false;
+        return $this->mask_arr = [
+            'left_part'=>$mask_pair[0],
+            'left_l'=>strlen($mask_pair[0]),
+            'right_part'=>$mask_pair[1],
+            'right_l'=>strlen($mask_pair[1]),
+            'min_len'=>(strlen($mask)-1)
+        ];
+        $g->fnGitPathFilter = array($this,'fnMaskFilter');
+    }
+    private function fnMaskFilter($path) {
+        $l=strlen($path);
+        if($l < $this->mask_arr['min_len']) return true;
+        $tst = strtolower($path);
+        if(
+            substr($path, 0, $this->mask_arr['left_l']) !== $this->mask_arr['left_part']
+        ) return true;
+        if(
+            substr($path, -$this->mask_arr['left_r']) !== $this->mask_arr['right_part']
+        ) return true;
+        return false;
     }
 }

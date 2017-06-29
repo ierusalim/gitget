@@ -13,15 +13,14 @@
 
 namespace ierusalim\GitGet;
 
-$out_path = getcwd();
-
-require __DIR__ ."/vendor/ierusalim/github-repo-walk/src/GitRepoWalk.php";
+require __DIR__ ."/../vendor/ierusalim/github-repo-walk/src/GitRepoWalk.php";
+//require __DIR__ ."/../../../ierusalim/github-repo-walk/src/GitRepoWalk.php";
 require __DIR__ ."/GitGet.php";
 
 $g = new GitGet();
 
-//get console arguments in temporary array
-$args_arr=$argv;
+//get console arguments in temporary array, without [0] argument where start-file
+$args_arr=array_slice($argv,1);
 
 //first pass: looking for github-links in arguments
 foreach($args_arr as $k=>$arg) {
@@ -33,18 +32,20 @@ foreach($args_arr as $k=>$arg) {
     unset($args_arr[$k]);
 }
 
-$have_dots = 0;
-
 //second pass: looking for user/repo
-foreach($args_arr as $arg) {
+foreach($args_arr as $k=>$arg) {
     switch($arg) {
     case '.':
-        $have_dots++;
-        continue;
-    case '--args':
+        $arg = getcwd();
+        //echo "Dot replaced as $arg \n";
+        break;
     case '--argv':
+        echo "Current File:".__FILE__ ."\n";
+        print_r($argv);
+    case '--args':
         $show_args=true;
-        continue;
+        unset($args_arr[$k]);
+        continue 2;
     }    
     //only if git_url still not recognized
     if(empty($git_url)) {
@@ -54,9 +55,26 @@ foreach($args_arr as $arg) {
             $git_url = 'https://github.com/'.$git_user . '/' . $git_repo;
             if (!$ret = $g->githubLinkParse($git_url)) {
                 unset($git_url);
+            } else {
+                unset($args_arr[$k]);
+                continue;
             }
         }
     }
+    
+    //seek local path
+    $ret = $g->validateLocalDir($arg);
+    if($ret) {
+        if(empty($local_path)) {
+            $local_path = $arg;
+            unset($args_arr[$k]);
+        }
+    }
+}
+if(count($args_arr)) {
+    echo "Unrecognized argument" . ((count($args_arr)>1) ? 's: ' : ': ');
+    foreach($args_arr as $arg) { echo $arg ."\n\t"; }
+    die("\n");
 }
 //show args if need
 if(!empty($show_args)) {
@@ -70,15 +88,17 @@ if(!empty($show_args)) {
     if(!empty($git_branch)) {
         echo "Git-branch: $git_branch\n";
     }
+    if(!empty($local_path)) {
+        echo "Output path: $local_path\n";
+    }
+    die;
 }
+
+if(!empty($local_path) && !is_dir($local_path)) die("Path not found $local_path\n");
 
 //if branch presumably defined
 if(!empty($git_branch)) {
     $may_be_branch = $git_branch;
-}
-
-if($have_dots) {
-    echo "Output path=".$out_path."\n";
 }
 
 while(empty($git_url)) {    
@@ -115,8 +135,27 @@ if(!empty($git_user)) {
         }
         echo "$git_user: ".count($repo_list) ." repositories\n\n";
         foreach($repo_list as $repo_obj) {
-            echo $git_user.'/'.$repo_obj['name'] . "\n";
+            $git_user_and_repo = $git_user.'/'.$repo_obj['name'];
+            echo $git_user_and_repo;
             //if(!empty($repo_obj['description'])) echo "\t[" .$repo_obj['description']."]";
+            if(!empty($repo_obj['fork'])) {
+                echo " [fork] ";
+            } else {
+                if(empty($contacts)) {
+                    try {
+                        $contacts = $g->getRepositoryContacts($git_user_and_repo);
+                    } catch(\Exception $e) {
+                        echo " ... ".$e->getMessage();
+                    }
+                }
+            }
+            echo "\n";
+        }
+        if(!empty($contacts)) {
+            echo "\nContact" . ((count($contacts)>1)?"s:\n":': ');
+            foreach($contacts as $email=>$roles) {
+                echo $email . ' -- '. $roles[0]['name']."\n"; 
+            }
         }
         die("\n");
     } else {
@@ -128,14 +167,33 @@ if(!empty($git_user)) {
         } catch (Exception $ex) {
             die($e->getMessage());
         }
-        echo "Information about repository $pair \n";
-        print_r($repo_files_stat);
+        if(empty($local_path)) {
+            echo "Information about repository $pair \n";
+            print_r($repo_files_stat);
+        }
+        if(!empty($local_path)) {
+            $g->writeEnableOverwrite();
+            
+            $g->setMaskFilter('src/*.php');
+            /*
+            $g->fnGitPathFilter = function($git_fo) {
+                return (substr($git_fo->path,-4)!=='.php'); 
+            };
+             * 
+             */
+            
+             //download all files from repository to local-path
+            $stat = $g->gitRepoWalk( 
+                $local_path,
+                $pair,
+                $git_branch
+            );
+
+            print_r($stat);
+
+        }
     }
 }
 
-print_r($ret);
-
-//$contacts = $g->getRepositoryContacts('ierusalim\github-repo-walk');
-//print_r($contacts);
 
 __HALT_COMPILER();
