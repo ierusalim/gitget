@@ -193,7 +193,7 @@ class GitGet extends GitRepoWalk {
     }
     
     /**
-     * Valisate git-repo name, return false if invalid
+     * Validate git-repo name, return false if invalid
      * 
      * @param string $git_repo
      * @return boolean
@@ -229,6 +229,6 @@ class GitGet extends GitRepoWalk {
                 }
             }
         }
-        return $inter_obj; //compact('files_cnt','subfolders','total_size','git_branch');
+        return $inter_obj;
     }
 }
