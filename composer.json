@@ -1,6 +1,8 @@
 {
     "name": "ierusalim/gitget",
-    "description": "Description of project gitget.",
+    "description": "Tool for download repositories, foldes, files from github.",
+    "keywords": ["github","repo","repository","download"],
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Alexander Jer",

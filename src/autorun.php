@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * This file contain autorun-script for gitget.phar
+ * 
+ * PHP Version 5.6
+ * 
+ * @package    ierusalim\gitget
+ * @author     Alexander Jer <alex@ierusalim.com>
+ * @copyright  2017, Ierusalim
+ * @license    Apache License 2.0
+ */
+
 namespace ierusalim\GitGet;
 
 $out_path = getcwd();
@@ -9,8 +20,9 @@ require __DIR__ ."/GitGet.php";
 
 $g = new GitGet();
 
-//get arguments in temporary array
+//get console arguments in temporary array
 $args_arr=$argv;
+
 //first pass: looking for github-links in arguments
 foreach($args_arr as $k=>$arg) {
     $ret = $g->GitHubLinkParse($arg);
