@@ -1,3 +1,5 @@
 /nbproject/
 /vendor/
 /composer.lock
+/src/makephar.php
+/bin/root/
