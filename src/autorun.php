@@ -49,6 +49,14 @@ foreach($args_arr as $k=>$arg) {
     }    
     //only if git_url still not recognized
     if(empty($git_url)) {
+        $i=strpos($arg,'*');
+        if($i) {
+            $mask_arr = explode('/',$arg);
+            if(count($mask_arr)>2) {
+                $git_mask = implode(array_slice($mask_arr,2));
+                $arg = $mask_arr[0].'/'.$mask_arr[1];
+            }
+        }
         $ret = $g->checkUserRepoInter($arg);
         if($ret) {
             extract($ret);
@@ -84,6 +92,9 @@ if(!empty($show_args)) {
     }
     if(!empty($git_repo)) {
         echo "Git-repo: $git_repo\n";
+    }
+    if(!empty($git_mask)) {
+        echo "Git-mask: $git_mask\n";
     }
     if(!empty($git_branch)) {
         echo "Git-branch: $git_branch\n";
@@ -172,16 +183,13 @@ if(!empty($git_user)) {
             print_r($repo_files_stat);
         }
         if(!empty($local_path)) {
-            $g->writeEnableOverwrite();
+            //$g->writeEnableOverwrite();
+            $g->writeEnable();
             
-            $g->setMaskFilter('src/*.php');
-            /*
-            $g->fnGitPathFilter = function($git_fo) {
-                return (substr($git_fo->path,-4)!=='.php'); 
-            };
-             * 
-             */
-            
+            if(!empty($git_mask)) {
+                echo "Set mask: $git_mask\n";
+                $g->setMaskFilter($git_mask);
+            }
              //download all files from repository to local-path
             $stat = $g->gitRepoWalk( 
                 $local_path,

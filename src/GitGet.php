@@ -337,6 +337,7 @@ class GitGet extends GitRepoWalk {
         $mask_pair = explode('*',strtolower($mask));
         //mask must have one char *
         if(count($mask_pair) !=2 ) return false;
+        $this->fnGitPathFilter = array($this,'fnMaskFilter');
         return $this->mask_arr = [
             'left_part'=>$mask_pair[0],
             'left_l'=>strlen($mask_pair[0]),
@@ -344,18 +345,14 @@ class GitGet extends GitRepoWalk {
             'right_l'=>strlen($mask_pair[1]),
             'min_len'=>(strlen($mask)-1)
         ];
-        $g->fnGitPathFilter = array($this,'fnMaskFilter');
     }
-    private function fnMaskFilter($path) {
-        $l=strlen($path);
-        if($l < $this->mask_arr['min_len']) return true;
-        $tst = strtolower($path);
-        if(
-            substr($path, 0, $this->mask_arr['left_l']) !== $this->mask_arr['left_part']
-        ) return true;
-        if(
-            substr($path, -$this->mask_arr['left_r']) !== $this->mask_arr['right_part']
-        ) return true;
+    public function fnMaskFilter($git_fo) {
+        extract($this->mask_arr);
+        $l=strlen($git_fo->path);
+        if($l < $min_len) return true;
+        $tst = strtolower($git_fo->path);
+        if(substr($tst, 0, $left_l) !== $left_part) return true;
+        if(substr($tst, -$right_l) !== $right_part) return true;
         return false;
     }
 }
