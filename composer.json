@@ -10,6 +10,6 @@
         }
     ],
     "require": {
-        "ierusalim/github-repo-walk": "dev-master"
+        "ierusalim/github-repo-walk": ">=0.0.1"
     }
 }
