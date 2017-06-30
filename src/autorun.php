@@ -13,11 +13,19 @@
 
 namespace ierusalim\GitGet;
 
-require __DIR__ ."/../vendor/ierusalim/github-repo-walk/src/GitRepoWalk.php";
-//require __DIR__ ."/../../../ierusalim/github-repo-walk/src/GitRepoWalk.php";
+//need for debugging 
+$inc = __DIR__ ."/../../../ierusalim/github-repo-walk/src/GitRepoWalk.php";
+if(is_file($inc)) require $inc;
+else require __DIR__ ."/../vendor/ierusalim/github-repo-walk/src/GitRepoWalk.php";
+
 require __DIR__ ."/GitGet.php";
 
 $g = new GitGet();
+
+$tmp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR .'gitget';
+if($g->checkDirMkDir($tmp_path)) {
+    $g->cacheGetContentsActivate($tmp_path);
+}
 
 //get console arguments in temporary array, without [0] argument where start-file
 $args_arr=array_slice($argv,1);
@@ -29,44 +37,41 @@ foreach($args_arr as $k=>$arg) {
     if(!empty($git_url)) die("ERROR: Double github-links found in arguments\n");
     extract($ret);
     $git_url = $arg;
+    if(!empty($git_path)) {
+        $git_mask = $git_path;
+    }
+
     unset($args_arr[$k]);
 }
 
 //second pass: looking for user/repo
 foreach($args_arr as $k=>$arg) {
     switch($arg) {
-    case '.':
-        $arg = getcwd();
-        //echo "Dot replaced as $arg \n";
-        break;
     case '--argv':
         echo "Current File:".__FILE__ ."\n";
         print_r($argv);
     case '--args':
         $show_args=true;
+    case '-?':
+    case '/?':
+    case '--help':
+    case '/help':
+        if(empty($show_args)) {
+            console_help_show();
+        }
         unset($args_arr[$k]);
         continue 2;
     }    
     //only if git_url still not recognized
     if(empty($git_url)) {
-        $i=strpos($arg,'*');
-        if($i) {
-            $mask_arr = explode('/',$arg);
-            if(count($mask_arr)>2) {
-                $git_mask = implode(array_slice($mask_arr,2));
-                $arg = $mask_arr[0].'/'.$mask_arr[1];
-            }
-        }
         $ret = $g->checkUserRepoInter($arg);
         if($ret) {
             extract($ret);
-            $git_url = 'https://github.com/'.$git_user . '/' . $git_repo;
-            if (!$ret = $g->githubLinkParse($git_url)) {
-                unset($git_url);
-            } else {
-                unset($args_arr[$k]);
-                continue;
+            if(!empty($git_path)) {
+                $git_mask = $git_path;
             }
+            unset($args_arr[$k]);
+            continue;
         }
     }
     
@@ -74,6 +79,13 @@ foreach($args_arr as $k=>$arg) {
     $ret = $g->validateLocalDir($arg);
     if($ret) {
         if(empty($local_path)) {
+            if(substr($arg,0,1)=='.') {
+                if(strlen($arg)===1 || strpos('\\/',substr($arg,1,1))!==false) {
+                    $arg = getcwd() . substr($arg,1);
+                } else {
+                    continue;
+                }
+            }
             $local_path = $arg;
             unset($args_arr[$k]);
         }
@@ -82,8 +94,32 @@ foreach($args_arr as $k=>$arg) {
 if(count($args_arr)) {
     echo "Unrecognized argument" . ((count($args_arr)>1) ? 's: ' : ': ');
     foreach($args_arr as $arg) { echo $arg ."\n\t"; }
-    die("\n");
+    die("\nUse: gitget -? for help\n");
 }
+
+if(!empty($local_path)) {
+    //expanding '+' in local_path to 'user/repo'
+    $i=strpos($local_path, '+');
+    if($i !==false) {
+        if(!empty($git_user) && !empty($git_repo)) {
+            $left_part = substr($local_path,0,$i);
+            $right_part = substr($local_path,$i+1);
+            if(empty($left_part)) $left_part = getcwd();
+            if(!is_dir($left_part)) die("Path not found $left_part\n");
+            $local_path = $g->pathDs($left_part) . $git_user;
+            if(!is_dir($local_path)) mkdir($local_path);
+            $local_path.= DIRECTORY_SEPARATOR . $git_repo;
+            if(!is_dir($local_path)) mkdir($local_path);
+            if(!empty($right_part)) {
+                $local_path.=$right_part;
+                if(!$g->checkDirMkDir($local_path)) {
+                    die("Can't create $local_path\n");
+                }
+            }
+        }
+    }
+}
+
 //show args if need
 if(!empty($show_args)) {
     echo (empty($git_url))?"Git-url unrecognized\n":"Git-url: $git_url\n";
@@ -105,13 +141,22 @@ if(!empty($show_args)) {
     die;
 }
 
-if(!empty($local_path) && !is_dir($local_path)) die("Path not found $local_path\n");
-
+if(!empty($local_path) && !is_dir($local_path)) {
+    if(!\is_dir(\dirname($local_path))) { //can create only 1 subfolder
+        die("Path not found $local_path\n");
+    }
+}
 //if branch presumably defined
 if(!empty($git_branch)) {
     $may_be_branch = $git_branch;
 }
 
+if(empty($git_user)) {
+    console_help_show();
+    die;
+}
+
+/*
 while(empty($git_url)) {    
     echo "Enter github url:";
     $git_url = trim(fgets(STDIN));
@@ -133,8 +178,9 @@ while(empty($git_url)) {
     }
     echo "Unrecognized url\n";
 }
+*/
 
-if(empty($git_url)) die("Unrecognized url\n");
+//if(empty($git_url)) die("Unrecognized url\n");
 
 if(!empty($git_user)) {
     if(empty($git_repo)) {
@@ -187,10 +233,10 @@ if(!empty($git_user)) {
             $g->writeEnable();
             
             if(!empty($git_mask)) {
-                echo "Set mask: $git_mask\n";
+                //echo "Set mask: $git_mask\n";
                 $g->setMaskFilter($git_mask);
             }
-             //download all files from repository to local-path
+             //download mask-filtered files from repository to local-path
             $stat = $g->gitRepoWalk( 
                 $local_path,
                 $pair,
@@ -203,5 +249,11 @@ if(!empty($git_user)) {
     }
 }
 
+function console_help_show() {
+    static $shown=false;
+    if($shown) return;
+    readfile(__DIR__ . '/console_help.txt');
+    $shown=1;
+}
 
 __HALT_COMPILER();

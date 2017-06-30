@@ -1,0 +1,19 @@
+Download from <git_repo> to <local_path>, or see info about repositories
+
+usage: gitget <git_repo> [<local_path>]
+
+<git_repo>   - may be specified as 'user/repository' or full github url
+<local_path> - [optional] path for put downloaded content.
+               no downloads if local_path not specified
+Examples:
+  gitget php-fig/*      - show list of repositories by user 'php-fig'
+  gitget php-fig/log    - show information about repository 'php-fig/log'
+  gitget php-fig/log .  - download all files from repository 'php-fig/log'
+                          to current path (path from called gitget script)
+
+Local path may be specified as ./path or /abspath (or D:\path for Windows)
+
+Masks with * character enabled, for example, try it:
+ gitget composer/getcomposer.org/*.sh ./all-sh
+(download all *.sh files from repository 'composer/getcomposer.org' to ./all-sh)
+ gitget 

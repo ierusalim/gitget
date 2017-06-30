@@ -59,14 +59,19 @@ class GitGet extends GitRepoWalk {
         $i=strpos($url,'#');
         if($i) $url = substr($url,0,$i);
         
-        $host_bases = ['github.com','githubusercontent.com'];
+        $host_bases = [
+            'github.com',
+            'api.github.com',
+            'raw.githubusercontent.com',
+        ];
         //Example link:
         //https://github.com/ierusalim/github-repo-walk/tree/master/src
         foreach($host_bases as $host_base) {
-            $hbl = strlen($host_base);
+            //$hbl = strlen($host_base);
             $u = explode('/',$url);
             for($i=0;$i<count($u);$i++) {
-                if(strtolower(substr($u[$i], -$hbl)) === $host_base) {
+                //if(strtolower(substr($u[$i], -$hbl)) === $host_base) {
+                if(strtolower($u[$i]) === $host_base) {
                     $host = strtolower($u[$i]);
                     $u=array_slice($u, $i+1);
                     break;
@@ -161,12 +166,18 @@ class GitGet extends GitRepoWalk {
             $git_branch = trim(substr($git_repo,$i+1));
             $git_repo = trim(substr($git_repo,0,$i));
         }
+        $git_path = NULL;
         if($git_repo === '*') {
             $git_repo = NULL;
         } else {
+            $i=strpos($git_repo,'/');
+            if($i) {
+                $git_path = substr($git_repo,$i+1);
+                $git_repo = substr($git_repo,0,$i);
+            }
             if(!$this->gitRepoNameValidate($git_repo)) return false;
         }
-        return compact('git_user','git_repo','git_branch');
+        return compact('git_user','git_repo','git_branch','git_path');
     }
 
     /**
@@ -207,7 +218,7 @@ class GitGet extends GitRepoWalk {
     public function gitRepoNameValidate($git_repo) {
         if(empty($git_repo)) return false;
         if(strlen($git_repo)>100) return false;
-        if (!preg_match('/^[A-Za-z0-9\-\_]*$/', $git_repo)) return false;
+        if (!preg_match('/^[A-Za-z0-9\.\-\_]*$/', $git_repo)) return false;
         return true;
     }
     
@@ -223,11 +234,13 @@ class GitGet extends GitRepoWalk {
         $files_cnt = 0;
         $subfolders = 0;
         $total_size = 0;
+        $folders_arr=[];
         foreach($repo_files->tree as $git_fo) {
             if($git_fo->type =='blob') {
                 $files_cnt++;
                 $total_size+=$git_fo->size;
             } elseif($git_fo->type == 'tree') {
+                $folders_arr[] = $git_fo->path;
                 $subfolders++;
             }
         }
@@ -242,9 +255,40 @@ class GitGet extends GitRepoWalk {
                 }
             }
         }
+        $inter_obj['xRateLimit'] = ($this->xRateRemaining) ?
+            $this->xRateRemaining
+                . ' api-req left, reset in '
+                . ($this->xRateReset - time()) . ' sec.'
+            :
+            'No api-requests [now used data from cache]';
+            
+        $this->treeShowPrepare($folders_arr);
+        $inter_obj['tree'] = $folders_arr;
         return $inter_obj;
     }
     
+    /**
+     * 
+     * @param array $folders_arr
+     * @return void
+     */
+    function treeShowPrepare(&$folders_arr) {
+        $prev_path = false;
+        foreach($folders_arr as $k=>$path) {
+            if($prev_path) {
+                $skip_chars=0;
+                foreach(explode('/',$prev_path) as $x=>$next_part) {
+                    if($x) $skip_path.=$next_part.'/'; else $skip_path=$next_part.'/';
+                    $l=strlen($skip_path);
+                    if(substr($path,0,$l)===$skip_path) $skip_chars=$l; else break;
+                }
+                if($skip_chars) {
+                    $folders_arr[$k] = str_repeat(' ', $skip_chars) . '/' . substr($path,$skip_chars);
+                }
+            }
+            $prev_path = $path;
+        }
+    }
     /**
      * Path for save validator
      * 
@@ -336,7 +380,8 @@ class GitGet extends GitRepoWalk {
     public function setMaskFilter($mask) {
         $mask_pair = explode('*',strtolower($mask));
         //mask must have one char *
-        if(count($mask_pair) !=2 ) return false;
+        if(count($mask_pair) > 2 ) return false;
+        if(count($mask_pair) < 2 ) $mask_pair[1]='';
         $this->fnGitPathFilter = array($this,'fnMaskFilter');
         return $this->mask_arr = [
             'left_part'=>$mask_pair[0],
@@ -352,6 +397,7 @@ class GitGet extends GitRepoWalk {
         if($l < $min_len) return true;
         $tst = strtolower($git_fo->path);
         if(substr($tst, 0, $left_l) !== $left_part) return true;
+        if(!$right_l) return false;
         if(substr($tst, -$right_l) !== $right_part) return true;
         return false;
     }
