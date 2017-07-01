@@ -1,19 +1,35 @@
-Download from <git_repo> to <local_path>, or see info about repositories
 
-usage: gitget <git_repo> [<local_path>]
+usage: gitget <user_repo> [<local_path>]
 
-<git_repo>   - may be specified as 'user/repository' or full github url
+<user_repo>  - may be specified as 'user/repository' or full github url
 <local_path> - [optional] path for put downloaded content.
-               no downloads if local_path not specified
-Examples:
-  gitget php-fig/*      - show list of repositories by user 'php-fig'
-  gitget php-fig/log    - show information about repository 'php-fig/log'
+               (do not downloads if local_path not specified)
+Examples: ------------
+  gitget laravel        - show list of repositories by git-user 'laravel'
+  gitget laravel/lumen  - show information about repository 'laravel/lumen'
   gitget php-fig/log .  - download all files from repository 'php-fig/log'
-                          to current path (path from called gitget script)
+                          to current path (from which the gitget is started)
+----------------------
+Local path may be dot-begin specified as ./folder for add it to current path
 
-Local path may be specified as ./path or /abspath (or D:\path for Windows)
+Can use mask with * character for specified folders, extentions, etc.
 
-Masks with * character enabled, for example, try it:
- gitget composer/getcomposer.org/*.sh ./all-sh
-(download all *.sh files from repository 'composer/getcomposer.org' to ./all-sh)
- gitget 
+Examples: -------------
+  gitget symfony/flex/*test.php ./flextst
+ - download all files *test.php files from repository symfony/flex to ./flextst
+  gitget symfony/flex/tests/* ./flextst
+ - download all files from /tests folder of repository symfony/flex to ./flextst
+-----------------------
+Local path can be specified as /abspath or D:\path for Windows
+
+Character '+' in path expanded as user/repository part of path
+Examples: -------------
+  gitget laravel/tinker /var/www/vendor/+
+ -download all from repository laravel/tinker to /var/www/vendor/laravel/tinker/
+
+  gitget https://github.com/laravel/tinker D:\OpenServer\vendor\+
+- Same as in the previous example, but <user_repo> specified as url and windpath
+--------------------------------------------------------------------------------
+ATTN: gitget bypasses file-by-file and it can be slow for large repositories.
+if you need quick download all data from repository best to use git or composer.
+

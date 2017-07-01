@@ -19,6 +19,7 @@ if(is_file($inc)) require $inc;
 else require __DIR__ ."/../vendor/ierusalim/github-repo-walk/src/GitRepoWalk.php";
 
 require __DIR__ ."/GitGet.php";
+require __DIR__ ."/Packagist.php";
 
 $g = new GitGet();
 
@@ -61,7 +62,14 @@ foreach($args_arr as $k=>$arg) {
         }
         unset($args_arr[$k]);
         continue 2;
-    }    
+    case '-v':
+    case '--versions':
+        $versions_mode = true;
+        unset($args_arr[$k]);
+        continue 2;
+ 
+    
+    }
     //only if git_url still not recognized
     if(empty($git_url)) {
         $ret = $g->checkUserRepoInter($arg);
@@ -91,33 +99,18 @@ foreach($args_arr as $k=>$arg) {
         }
     }
 }
+
+if(count($args_arr) == 1) { 
+    // If there is only one argument that can be interpreted as a git-user name
+    $git_user = implode($args_arr);
+    if($g->gitUserNameValidate($git_user)) {
+        $args_arr=[];
+    }
+}
 if(count($args_arr)) {
     echo "Unrecognized argument" . ((count($args_arr)>1) ? 's: ' : ': ');
     foreach($args_arr as $arg) { echo $arg ."\n\t"; }
     die("\nUse: gitget -? for help\n");
-}
-
-if(!empty($local_path)) {
-    //expanding '+' in local_path to 'user/repo'
-    $i=strpos($local_path, '+');
-    if($i !==false) {
-        if(!empty($git_user) && !empty($git_repo)) {
-            $left_part = substr($local_path,0,$i);
-            $right_part = substr($local_path,$i+1);
-            if(empty($left_part)) $left_part = getcwd();
-            if(!is_dir($left_part)) die("Path not found $left_part\n");
-            $local_path = $g->pathDs($left_part) . $git_user;
-            if(!is_dir($local_path)) mkdir($local_path);
-            $local_path.= DIRECTORY_SEPARATOR . $git_repo;
-            if(!is_dir($local_path)) mkdir($local_path);
-            if(!empty($right_part)) {
-                $local_path.=$right_part;
-                if(!$g->checkDirMkDir($local_path)) {
-                    die("Can't create $local_path\n");
-                }
-            }
-        }
-    }
 }
 
 //show args if need
@@ -141,11 +134,38 @@ if(!empty($show_args)) {
     die;
 }
 
-if(!empty($local_path) && !is_dir($local_path)) {
-    if(!\is_dir(\dirname($local_path))) { //can create only 1 subfolder
-        die("Path not found $local_path\n");
+if(!empty($local_path)) {
+    $local_path = strtr($local_path, '/' , DIRECTORY_SEPARATOR);
+    if(!\is_dir($local_path)) {
+        $dir_name=\dirname($local_path);
+        if(!empty($dir_name) && !\is_dir($dir_name)) { //can create only 2 subfolder
+            $dir_name = \dirname($dir_name);
+            if(!empty($dir_name) && !\is_dir($dir_name)) {
+                die("Path not found $local_path\nBreak\n");
+            }
+        }
+    }    //expanding '+' in local_path to 'user/repo'
+    $i=strpos($local_path, '+');
+    if($i !==false) {
+        if(!empty($git_user) && !empty($git_repo)) {
+            $left_part = substr($local_path,0,$i);
+            $right_part = substr($local_path,$i+1);
+            if(empty($left_part)) $left_part = getcwd();
+            $local_path = $g->pathDs($left_part) . $git_user;
+            //if(!is_dir($local_path)) mkdir($local_path);
+            $local_path.= DIRECTORY_SEPARATOR . $git_repo;
+            //if(!is_dir($local_path)) mkdir($local_path);
+            if(!empty($right_part)) {
+                $local_path.=$right_part;
+                //if(!$g->checkDirMkDir($local_path)) {
+                //    die("Can't create $local_path\n");
+                //}
+            }
+        }
     }
+    echo "Local path: $local_path\n";
 }
+
 //if branch presumably defined
 if(!empty($git_branch)) {
     $may_be_branch = $git_branch;
@@ -227,6 +247,9 @@ if(!empty($git_user)) {
         if(empty($local_path)) {
             echo "Information about repository $pair \n";
             print_r($repo_files_stat);
+
+            $p = new Packagist();
+            echo $p->showVersionsStr($git_user.'/'.$git_repo);            
         }
         if(!empty($local_path)) {
             //$g->writeEnableOverwrite();
