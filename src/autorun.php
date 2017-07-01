@@ -208,13 +208,29 @@ if(!empty($git_user)) {
         try {
             $repo_list = $g->getUserRepositoriesList($git_user);
         } catch(\Exception $e) {
-            die($e->getMessage());
+            die($e->getMessage() . "\n");
         }
         echo "$git_user: ".count($repo_list) ." repositories\n\n";
+        
+        try {
+            $p = new Packagist();
+            $packagist_repo_arr = $p->getRepositoriesInPackagist($git_user);
+        } catch (Exception $ex) {
+            $packagist_repo_arr = [];
+        }
+        
         foreach($repo_list as $repo_obj) {
             $git_user_and_repo = $git_user.'/'.$repo_obj['name'];
-            echo $git_user_and_repo;
+            $pair_low = strtolower($git_user_and_repo);
+            echo str_pad($git_user_and_repo,32);
             //if(!empty($repo_obj['description'])) echo "\t[" .$repo_obj['description']."]";
+            
+            if(\in_array($pair_low,$packagist_repo_arr)) {
+                echo "[composer]";
+            } else {
+                echo "          ";
+            }
+            
             if(!empty($repo_obj['fork'])) {
                 echo " [fork] ";
             } else {
@@ -229,7 +245,7 @@ if(!empty($git_user)) {
             echo "\n";
         }
         if(!empty($contacts)) {
-            echo "\nContact" . ((count($contacts)>1)?"s:\n":': ');
+            echo "\n contact" . ((count($contacts)>1)?"s:\n":': ');
             foreach($contacts as $email=>$roles) {
                 echo $email . ' -- '. $roles[0]['name']."\n"; 
             }

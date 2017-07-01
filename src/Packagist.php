@@ -11,6 +11,20 @@ use ierusalim\GitRepoWalk\GitRepoWalk;
  */
 class Packagist extends GitRepoWalk
 {
+    public function getRepositoriesInPackagist($user) {
+        $src_url = 'https://packagist.org/packages/list.json?vendor='.$user;
+        $json_raw = $this->httpsGetContentsOrCache($src_url,260);
+        $json_arr = json_decode($json_raw,true);
+        if(!isset($json_arr['packageNames'])) {
+            if(isset($json_arr['error'])) {
+                $err=$json_arr['error'];
+            } else {
+                $err=['message'=>'Unknown error','code'=>500];
+            }
+            throw new \Exception($err['message'],$err['code']);
+        }
+        return $json_arr['packageNames'];
+    }
     /**
      * Get data about repository user/repo from Packagist.org
      * 
