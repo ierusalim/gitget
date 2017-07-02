@@ -1,9 +1,10 @@
 # gitget
 
 Simple tool for get information from github.com
+
 Packaged in gitget.phar and can use as 'php gitget.phar <parameters>'
 
-This is a help for console version (see src/console_help.txt)
+#####This is a help for console version (see src/console_help.txt)
 ```
 usage: gitget <user_repo> [<local_path>]
 
