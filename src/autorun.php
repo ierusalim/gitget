@@ -23,7 +23,11 @@ require __DIR__ ."/Packagist.php";
 
 $g = new GitGet();
 
-$tmp_path = sys_get_temp_dir() . DIRECTORY_SEPARATOR .'gitget';
+$g->hookHttpsGetContents = function($in_arr) {
+    echo '.';
+};
+
+$tmp_path = \sys_get_temp_dir() . \DIRECTORY_SEPARATOR .'gitget';
 if($g->checkDirMkDir($tmp_path)) {
     $g->cacheGetContentsActivate($tmp_path);
 }
@@ -234,7 +238,7 @@ if(!empty($git_user)) {
             if(!empty($repo_obj['fork'])) {
                 echo " [fork] ";
             } else {
-                if(empty($contacts)) {
+                if(empty($contacts) && !$g->isRateLimitExceeded()) {
                     try {
                         $contacts = $g->getRepositoryContacts($git_user_and_repo);
                     } catch(\Exception $e) {

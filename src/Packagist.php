@@ -13,8 +13,7 @@ class Packagist extends GitRepoWalk
 {
     public function getRepositoriesInPackagist($user) {
         $src_url = 'https://packagist.org/packages/list.json?vendor='.$user;
-        $json_raw = $this->httpsGetContentsOrCache($src_url,260);
-        $json_arr = json_decode($json_raw,true);
+        $json_arr = $this->jsonGetHttpsOrCache($src_url, 260, true);
         if(!isset($json_arr['packageNames'])) {
             if(isset($json_arr['error'])) {
                 $err=$json_arr['error'];
@@ -35,8 +34,7 @@ class Packagist extends GitRepoWalk
         extract($this->userRepoPairDivide($user_repo, 3));
         $pair_low = strtolower($git_user.'/' . $git_repo);
         $src_url = 'https://packagist.org/p/' . $pair_low . '.json';
-        $json_raw = $this->httpsGetContentsOrCache($src_url,260);
-        $json_arr = json_decode($json_raw,true);
+        $json_arr = $this->jsonGetHttpsOrCache($src_url, 260, true);
         if(!isset($json_arr['packages'][$pair_low])) {
             if(isset($json_arr['error'])) {
                 $err=$json_arr['error'];

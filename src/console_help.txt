@@ -5,7 +5,7 @@ usage: gitget <user_repo> [<local_path>]
 <local_path> - [optional] path for put downloaded content.
                (do not downloads if local_path not specified)
 Examples: ------------
-  gitget laravel        - show list of repositories by git-user 'laravel'
+  gitget symfony        - show list of repositories by git-user 'symfony'
   gitget laravel/lumen  - show information about repository 'laravel/lumen'
   gitget php-fig/log .  - download all files from repository 'php-fig/log'
                           to current path (from which the gitget is started)
